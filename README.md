@@ -16,12 +16,12 @@ Firmware for a conveyor machine that sorts boxes by height. A DC motor drives th
 
 | Part | Connection |
 |---|---|
-| Arduino-compatible board (Uno-class pinout; Servo + Wire libraries) | - |
+| Arduino-compatible board (uses digital pins D2-D9 including PWM on D5, hardware I2C via the Wire library, and the Servo library; consistent with Uno/Nano-class boards) | - |
 | Ultrasonic distance sensor 1 (top, above the belt) | TRIG D2, ECHO D3 |
 | Ultrasonic distance sensor 2 (side) | TRIG D4, ECHO D6 |
 | DC motor + H-bridge driver with IN1/IN2/enable inputs | IN1 D7, IN2 D8, ENA D5 (PWM, fixed speed 80/255) |
 | Servo (sorting gate) | Signal D9 (0 deg closed, 160 deg open) |
-| 16x2 LCD with I2C backpack, address 0x27 | SDA/SCL (A4/A5 on Uno-class boards) |
+| 16x2 LCD with I2C backpack, address 0x27 | I2C SDA/SCL (A4/A5 on Uno/Nano-class boards) |
 | Conveyor belt mechanism | Driven by the DC motor |
 
 ### Compatible example parts
@@ -42,7 +42,7 @@ Typical parts for this design. These models are common choices that match the fi
 - **Servo:** signal to D9; power from its own 5-6 V supply with the ground shared with the Arduino (see the power problem below).
 - **LCD:** VCC 5V, GND, SDA to A4, SCL to A5 on Uno-class boards. If the screen stays blank, scan the I2C bus: these backpacks ship as 0x27 or 0x3F depending on the batch.
 
-## Problems this firmware was built to solve
+## Problems this project was built to solve
 
 The sketch was written by trial and error: most of what goes beyond the happy path exists because of problems that came up while building the machine. They are the classic problems of ultrasonic sorting projects, and the sources at the end document the same issues and fixes.
 
@@ -51,7 +51,7 @@ The sketch was written by trial and error: most of what goes beyond the happy pa
 3. **Measuring a moving box.** Readings taken while the belt moves are inconsistent. Fix: the belt stops, waits 250 ms for the vibration to settle, and only then measures.
 4. **Timeouts freezing the machine.** `pulseIn()` with its default 1-second timeout stalls the whole loop when no echo comes back. Fix: a 25 ms timeout (about 4 m of range), and zero readings are discarded everywhere.
 5. **Uncalibrated start-up.** The side sensor's empty-belt distance depends on how it is mounted. Fix: a 9-sample median baseline at startup, and the machine refuses to run (`Side Sensor Err`) if the baseline cannot be measured.
-6. **Servo jitter and brown-outs.** A servo and a DC motor sharing the Arduino 5V rail leads to jitter, random resets, and erratic behavior when the motor starts. The standard fix is hardware: power the servo from a separate 5-6 V supply with common ground, and add a 470 uF or larger capacitor across 5V/GND near the servo. Adafruit's servo guide and Arduino forum threads document exactly this failure and fix.
+6. **Servo jitter and brown-outs.** A servo and a DC motor sharing the Arduino 5V rail leads to jitter, random resets, and erratic behavior when the motor starts. This one is not a firmware change: the standard fix is in the wiring, so the wiring guide above applies it: power the servo from a separate 5-6 V supply with common ground, and add a 470 uF or larger capacitor across 5V/GND near the servo. Whether the physical build already separates the supplies is unconfirmed. Adafruit's servo guide and Arduino forum threads document exactly this failure and fix.
 7. **Sorting the same box twice.** After a decision, the box is still in front of the sensors, and a naive loop classifies it again. Fix: the `waitingForClear` state; the next cycle starts only after both sensors see the belt empty.
 
 ## Calibration checklist
